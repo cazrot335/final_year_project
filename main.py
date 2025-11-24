@@ -76,11 +76,26 @@ def scrape_linkedin():
 
             for result in search_results:
                 try:
-                    link_el = result.find_element(By.CSS_SELECTOR, 'a')
-                    title_el = result.find_element(By.CSS_SELECTOR, 'h3')
-                    snippet_el = result.find_element(By.CSS_SELECTOR, '.VwiC3b')
+                    # Try multiple selectors for better compatibility
+                    try:
+                        link_el = result.find_element(By.CSS_SELECTOR, 'a[href*="linkedin.com"]')
+                    except:
+                        link_el = result.find_element(By.TAG_NAME, 'a')
+                    
+                    try:
+                        title_el = result.find_element(By.TAG_NAME, 'h3')
+                    except:
+                        title_el = result.find_element(By.CSS_SELECTOR, '[role="heading"]')
+                    
+                    try:
+                        snippet_el = result.find_element(By.CSS_SELECTOR, '.VwiC3b')
+                    except:
+                        try:
+                            snippet_el = result.find_element(By.CSS_SELECTOR, '.s')
+                        except:
+                            snippet_el = None
 
-                    href = link_el.get_attribute('href')
+                    href = link_el.get_attribute('href') if link_el else ''
                     title = title_el.text.strip() if title_el else ''
                     snippet = snippet_el.text.strip() if snippet_el else ''
 
@@ -112,8 +127,9 @@ def scrape_linkedin():
                             "profile_url": href,
                             "snippet": snippet
                         })
+                        print(f"✓ Extracted: {name}")
                 except Exception as e:
-                    print(f"Error parsing result: {e}")
+                    print(f"Error parsing result: {str(e)[:100]}")
                     continue
 
             time.sleep(random.uniform(1.5, 2.5))  # avoid detection
