@@ -18,6 +18,9 @@ from webdriver_manager.chrome import ChromeDriverManager
 # Apify
 from apify_client import ApifyClient
 
+# Resume screening
+from resume_screening import resume_bp
+
 load_dotenv()
 
 # Configuration
@@ -34,6 +37,7 @@ OUTPUT_CSV = os.path.join(DATA_DIR, "linkedin_profiles_detailed.csv")
 
 app = Flask(__name__)
 CORS(app)
+app.register_blueprint(resume_bp)
 
 # --- Helper: scrape Google search results for LinkedIn profiles ---
 def scrape_google_profiles(keyword, location, pages=3, with_email=True):

@@ -4,15 +4,9 @@
     <div class="navbar">
       <div class="navbar-container">
         <div class="navbar-logo">TalentFlow</div>
-        <div class="navbar-menu">
-          <a href="#features">Features</a>
-          <a href="#process">Process</a>
-          <a href="#stats">Statistics</a>
-          <a href="#faq">FAQ</a>
-        </div>
-        <div class="navbar-actions">
-          <button class="btn-outline">Sign In</button>
-          <button class="btn-solid">Get Started</button>
+        <div class="navbar-tabs">
+          <a href="/" class="nav-tab active">Discover Talent</a>
+          <a href="/resume" class="nav-tab">Resume Screening</a>
         </div>
       </div>
     </div>
@@ -25,24 +19,7 @@
           <p class="hero-subtitle">Find, screen, and hire the best candidates faster than ever with our intelligent recruitment platform</p>
           <button class="btn-hero">Start Your Search</button>
         </div>
-        <div class="hero-stats">
-          <div class="stat-card">
-            <div class="stat-number">1.2M+</div>
-            <div class="stat-label">Profiles Scraped</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-number">94%</div>
-            <div class="stat-label">Match Accuracy</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-number">500+</div>
-            <div class="stat-label">Companies Trust Us</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-number">24/7</div>
-            <div class="stat-label">Auto Scraping</div>
-          </div>
-        </div>
+   
       </div>
     </section>
 
@@ -95,7 +72,13 @@
           </div>
 
           <div class="results-panel">
-            <h3 class="panel-title">Results ({{ profiles.length }} found)</h3>
+            <div class="results-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <h3 class="panel-title">Results ({{ profiles.length }} found)</h3>
+              <div style="display:flex;gap:8px;">
+                <button class="btn-light" @click="downloadJSON" :disabled="profiles.length===0">Download JSON</button>
+                <button class="btn-light" @click="downloadCSV" :disabled="profiles.length===0">Download CSV</button>
+              </div>
+            </div>
             
             <div v-if="profiles.length === 0" class="empty-state">
               <div class="empty-icon">📋</div>
@@ -103,19 +86,26 @@
             </div>
 
             <div v-else class="profiles-list">
-              <div v-for="(p, i) in profiles" :key="i" class="profile-card">
+              <!-- Using normalized fields: name, title, company, location, profile_url -->
+              <div v-for="(p, i) in profiles" :key="p.profile_url || i" class="profile-card">
                 <div class="profile-header">
                   <div class="profile-avatar">{{ (p.name || 'U').charAt(0).toUpperCase() }}</div>
                   <div class="profile-info">
-                    <h4 class="profile-name">{{ p.name || p.basic_designation || 'Unknown' }}</h4>
-                    <p class="profile-role">{{ p.basic_designation }}</p>
+                    <h4 class="profile-name">{{ p.name || 'Unknown' }}</h4>
+                    <p class="profile-role">{{ p.title }}</p>
                   </div>
                 </div>
                 <div class="profile-meta">
-                  <span class="meta-tag">{{ p.basic_company }}</span>
-                  <span class="meta-tag">{{ p.basic_location }}</span>
+                  <span class="meta-tag">{{ p.company }}</span>
+                  <span class="meta-tag">{{ p.location }}</span>
                 </div>
-                <a :href="p.profile_url" target="_blank" class="profile-link">Visit LinkedIn →</a>
+
+                <div class="profile-extra" style="margin-bottom:12px;color:#6B7280;font-size:13px;">
+                  <div v-if="p.detailed_headline"><strong>Headline:</strong> {{ p.detailed_headline }}</div>
+                  <div v-else-if="p.snippet"><strong>Snippet:</strong> {{ p.snippet }}</div>
+                </div>
+
+                <a :href="p.profile_url" target="_blank" class="profile-link" rel="noopener">Visit LinkedIn →</a>
               </div>
             </div>
           </div>
@@ -155,11 +145,7 @@
             <h4>Easy Integration</h4>
             <p>Seamlessly integrate with your existing ATS and HR systems</p>
           </div>
-          <div class="feature-card">
-            <div class="feature-icon">🌍</div>
-            <h4>Global Coverage</h4>
-            <p>Access talent pools from over 190 countries worldwide</p>
-          </div>
+        
         </div>
       </div>
     </section>
@@ -198,27 +184,7 @@
       </div>
     </section>
 
-    <!-- STATISTICS SECTION -->
-    <section class="stats-section" id="stats">
-      <div class="stats-container">
-        <div class="stat-item">
-          <div class="stat-big-number">98K+</div>
-          <div class="stat-big-label">Profiles Per Month</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-big-number">2.5M</div>
-          <div class="stat-big-label">Total Candidates</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-big-number">4.9★</div>
-          <div class="stat-big-label">User Rating</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-big-number">99.9%</div>
-          <div class="stat-big-label">Uptime Guarantee</div>
-        </div>
-      </div>
-    </section>
+
 
     <!-- FAQ SECTION -->
     <section class="faq-section" id="faq">
@@ -245,46 +211,7 @@
       </div>
     </section>
 
-    <!-- FOOTER -->
-    <footer class="footer">
-      <div class="footer-container">
-        <div class="footer-column">
-          <h4>TalentFlow</h4>
-          <p>AI-powered recruitment platform for modern teams</p>
-        </div>
-        <div class="footer-column">
-          <h5>Company</h5>
-          <a href="#">About Us</a>
-          <a href="#">Blog</a>
-          <a href="#">Careers</a>
-          <a href="#">Contact</a>
-        </div>
-        <div class="footer-column">
-          <h5>Product</h5>
-          <a href="#">Features</a>
-          <a href="#">Pricing</a>
-          <a href="#">Security</a>
-          <a href="#">API</a>
-        </div>
-        <div class="footer-column">
-          <h5>Support</h5>
-          <a href="#">Documentation</a>
-          <a href="#">Help Center</a>
-          <a href="#">Community</a>
-          <a href="#">Contact Support</a>
-        </div>
-        <div class="footer-column">
-          <h5>Legal</h5>
-          <a href="#">Privacy Policy</a>
-          <a href="#">Terms of Service</a>
-          <a href="#">Cookie Policy</a>
-          <a href="#">GDPR</a>
-        </div>
-      </div>
-      <div class="footer-bottom">
-        <p>&copy; 2024 TalentFlow. All rights reserved.</p>
-      </div>
-    </footer>
+  
   </div>
 </template>
 
@@ -329,10 +256,55 @@ const faqItems = ref([
   }
 ])
 
+// -- normalization helper to handle both quick-scrape and merged responses --
+function normalizeItem(p = {}) {
+  const raw = p.raw_data || p
+  const name = p.name || raw.name || ''
+  const title = p.detailed_headline || p.basic_designation || p.designation || raw.headline || ''
+  const company = p.basic_company || p.company || raw.company || ''
+  const locationVal = p.basic_location || p.location || raw.location || ''
+  const profile_url = p.profile_url || p.profileUrl || raw.profile_url || raw.url || ''
+  const snippet = p.snippet || raw.snippet || ''
+  const detailed_about = p.detailed_about || raw.about || ''
+  const detailed_experience = p.detailed_experience || raw.experience || []
+  const detailed_education = p.detailed_education || raw.education || []
+  const detailed_skills = p.detailed_skills || raw.skills || []
+  const detailed_connections = p.detailed_connections || raw.connections || ''
+  return {
+    name,
+    title,
+    company,
+    location: locationVal,
+    profile_url,
+    snippet,
+    detailed_headline: title,
+    detailed_about,
+    detailed_experience,
+    detailed_education,
+    detailed_skills,
+    detailed_connections,
+    raw_data: raw
+  }
+}
+
+function setProfilesFromResponse(payload) {
+  // payload may be an array or an object with .profiles
+  let items = []
+  if (!payload) items = []
+  else if (Array.isArray(payload)) items = payload
+  else if (Array.isArray(payload.profiles)) items = payload.profiles
+  else items = payload.data || []
+
+  profiles.value = items.map(normalizeItem)
+}
+
+// -- API calls --
 async function loadSaved () {
   try {
     const res = await api.get('/profiles')
-    profiles.value = Array.isArray(res.data) ? res.data : []
+    const data = res.data
+    // /profiles returns array directly or error
+    setProfilesFromResponse(data)
   } catch (err) {
     console.error(err)
     profiles.value = []
@@ -344,7 +316,8 @@ async function scrape () {
   loadingScrape.value = true
   try {
     const res = await api.get('/scrape-linkedin', { params: { keyword: keyword.value, location: location.value, pages: pages.value, with_email: withEmail.value ? 1 : 0 } })
-    profiles.value = res.data.profiles || []
+    const data = res.data
+    setProfilesFromResponse(data.profiles || data)
   } catch (err) {
     console.error(err)
   } finally {
@@ -357,7 +330,7 @@ async function refresh () {
   loadingRefresh.value = true
   try {
     const res = await api.get('/profiles/refresh', { params: { keyword: keyword.value, location: location.value, pages: pages.value, with_email: withEmail.value ? 1 : 0 } })
-    profiles.value = res.data.profiles || []
+    setProfilesFromResponse(res.data)
   } catch (err) {
     console.error(err)
   } finally {
@@ -365,10 +338,48 @@ async function refresh () {
   }
 }
 
+// -- Download helpers --
+function downloadJSON() {
+  if (!profiles.value.length) return
+  const blob = new Blob([JSON.stringify(profiles.value, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `talentflow_profiles_${Date.now()}.json`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
+function downloadCSV() {
+  if (!profiles.value.length) return
+  const keys = ['name','title','company','location','profile_url','snippet','detailed_headline','detailed_about','detailed_experience','detailed_education','detailed_skills','detailed_connections']
+  const rows = profiles.value.map(p => {
+    return keys.map(k => {
+      let v = p[k]
+      if (Array.isArray(v) || typeof v === 'object') v = JSON.stringify(v)
+      if (v === null || typeof v === 'undefined') v = ''
+      return `"${String(v).replace(/"/g, '""')}"`
+    }).join(',')
+  })
+  const csv = [keys.join(','), ...rows].join('\r\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `talentflow_profiles_${Date.now()}.csv`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
 function toggleFAQ(idx) {
   faqItems.value[idx].open = !faqItems.value[idx].open
 }
 
+// initial load
 loadSaved()
 </script>
 
@@ -386,7 +397,7 @@ loadSaved()
   color: #1F2937;
 }
 
-/* NAVBAR */
+/* NAVBAR (kept minimal) */
 .navbar {
   position: sticky;
   top: 0;
@@ -411,21 +422,23 @@ loadSaved()
   color: #FFFFFF;
 }
 
-.navbar-menu {
+.navbar-tabs {
   display: flex;
-  gap: 40px;
-  margin: 0 auto;
+  gap: 20px;
 }
 
-.navbar-menu a {
-  color: #FFFFFF;
+.nav-tab {
+  color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
   font-size: 14px;
-  transition: 300ms ease;
+  transition: color 0.3s;
+  padding-bottom: 4px;
   border-bottom: 2px solid transparent;
 }
 
-.navbar-menu a:hover {
+.nav-tab.active,
+.nav-tab:hover {
+  color: #FFFFFF;
   border-bottom-color: #0099D8;
 }
 
@@ -467,7 +480,7 @@ loadSaved()
 }
 
 @media (max-width: 768px) {
-  .navbar-menu {
+  .navbar-tabs {
     display: none;
   }
 }
