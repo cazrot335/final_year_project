@@ -1,0 +1,22 @@
+# AI & Document Processing
+docling
+chromadb
+torch
+torchvision
+accelerate
+
+# Core Compatibility Fix
+numpy<2.0
+
+# Web Scraping & Automation
+selenium
+webdriver-manager
+apify-client
+
+# Web Framework
+flask
+flask-cors
+
+# Utilities
+python-dotenv
+requests

@@ -1,0 +1,9 @@
+resume.pdf
+stage1.json
+desktop.ini
+data.json
+.env
+/vector_db/
+/linkedIn_profiles/
+/.venv/
+/__pycache__/
