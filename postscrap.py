@@ -8,6 +8,7 @@ import json
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
+from models import AnalyzedProfile, db, Profile, ScrapeLog, GlobalStats
 
 # Selenium + webdriver-manager
 from selenium import webdriver
@@ -39,6 +40,16 @@ OUTPUT_CSV = os.path.join(DATA_DIR, "linkedin_profiles_detailed.csv")
 app = Flask(__name__)
 CORS(app)
 
+
+# Database Configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///recruiter.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialize the DB with the app
+db.init_app(app)
+
+with app.app_context():
+    db.create_all()
 
 # commented
 # app.register_blueprint(resume_bp)
@@ -278,15 +289,44 @@ def api_scrape_single_profile():
 def api_scrape_linkedin():
     keyword = request.args.get('keyword')
     location = request.args.get('location')
-    with_email = request.args.get('with_email', '1') == '1'
     pages = int(request.args.get('pages', 1))
 
-    if not keyword or not location:
-        return jsonify({'error': 'keyword and location required'}), 400
+    # 1. Run the Dorking Algorithm
+    raw_results = scrape_google_profiles(keyword, location, pages=pages)
+    
+    total_count = len(raw_results)
+    unique_count = 0
 
-    profiles = scrape_google_profiles(keyword, location, pages=pages, with_email=with_email)
-    return jsonify({'saved': len(profiles), 'profiles': profiles})
+    for p in raw_results:
+        url = p.get('profile_url')
+        # Check uniqueness in SQL
+        exists = Profile.query.filter_by(profile_url=url).first()
+        
+        if not exists:
+            new_p = Profile(
+                profile_url=url, 
+                name=p.get('name'),
+                designation=p.get('designation'),
+                snippet=p.get('snippet')
+            )
+            db.session.add(new_p)
+            unique_count += 1
 
+    # 2. Transactional Logging (Total vs Unique)
+    new_log = ScrapeLog(
+        keyword_used=keyword,
+        total_found=total_count,
+        unique_new=unique_count
+    )
+    db.session.add(new_log)
+    db.session.commit()
+
+    return jsonify({
+        "status": "success",
+        "session_total": total_count,
+        "session_unique": unique_count,
+        "efficiency": f"{(unique_count/total_count)*100 if total_count > 0 else 0:.1f}%"
+    })
 
 #biometric screening using qwen model 
 @app.route('/extract-relevant-data', methods=['POST'])
@@ -357,6 +397,266 @@ def api_stage2_screen():
             "reason": str(e),
             "raw_ai_content": raw_ai_output
         }), 500
+    
+
+    #to check real time stats 
+@app.route('/api/dashboard-stats', methods=['GET'])
+def get_dashboard():
+    # Real-time stats for Home.js
+        total_unique = Profile.query.count()
+    
+    # Calculate Total Scrap (all links ever seen) using SQL Sum
+        total_scraped_ever = db.session.query(db.func.sum(ScrapeLog.total_found)).scalar() or 0
+    
+        return jsonify({
+        "total_unique_profiles": total_unique,
+        "total_scraped_links": int(total_scraped_ever),
+        "duplicate_profiles_filtered": int(total_scraped_ever) - total_unique
+        })
+
+# Real time Search Logs 
+@app.route('/api/scrape-logs', methods=['GET'])
+def get_scrape_logs():
+
+    logs = (
+        ScrapeLog.query
+        .order_by(ScrapeLog.timestamp.desc())
+        .limit(10)
+        .all()
+    )
+
+    formatted_logs = []
+
+    for log in logs:
+        efficiency = (log.unique_new / log.total_found * 100) if log.total_found else 0
+
+        formatted_logs.append({
+            "timestamp": log.timestamp.strftime("%H:%M:%S"),
+            "keyword": log.keyword_used,
+            "total_found": log.total_found,
+            "unique_new": log.unique_new,
+            "efficiency": round(efficiency, 1)
+        })
+
+    return jsonify(list(reversed(formatted_logs)))
+
+#getting profile links from db 
+@app.route('/api/profiles', methods=['GET'])
+def get_profiles():
+
+    page = int(request.args.get("page", 1))
+    limit = int(request.args.get("limit", 6))
+
+    designation = request.args.get("designation")
+    location = request.args.get("location")
+
+    query = Profile.query
+
+    # Filter by designation
+    if designation:
+        query = query.filter(Profile.designation.ilike(f"%{designation}%"))
+
+    # Filter by location (inside snippet usually)
+    if location:
+        query = query.filter(Profile.snippet.ilike(f"%{location}%"))
+
+    total = query.count()
+
+    profiles = (
+        query.order_by(Profile.created_at.desc())
+        .offset((page-1)*limit)
+        .limit(limit)
+        .all()
+    )
+
+    results = []
+
+    for p in profiles:
+        results.append({
+            "id": p.id,
+            "name": p.name,
+            "designation": p.designation,
+            "snippet": p.snippet,
+            "profile_url": p.profile_url
+        })
+
+    return jsonify({
+        "status": "success",
+        "total_profiles": total,
+        "page": page,
+        "results": results
+    })
+
+
+#for stage 1 getting extended profile summarize details with biometrics 
+@app.route('/api/pipeline/profile-analysis', methods=['POST'])
+def pipeline_profile_analysis():
+
+    data = request.get_json()
+    profile_url = data.get("url")
+
+    if not profile_url:
+        return jsonify({"error": "LinkedIn URL required"}), 400
+
+
+    # STEP 1 — Check if profile already analysed
+    existing = AnalyzedProfile.query.filter_by(
+        profile_url=profile_url
+    ).first()
+
+    if existing:
+
+        ai_data = json.loads(existing.raw_json)
+
+        analysed_count = AnalyzedProfile.query.count()
+
+        return jsonify({
+
+            "status": "cached",
+
+            "candidate_summary": {
+
+                "name": existing.name,
+                "headline": existing.headline,
+
+                "biometric_score": existing.biometric_score,
+
+                "skills": json.loads(existing.skills),
+                "experience": json.loads(existing.experience),
+                "education": json.loads(existing.education)
+
+            },
+
+            "recruiter_notes": {
+
+                "missing_fields": ai_data.get("missing_fields", []),
+                "ai_feedback": ai_data.get("feedback")
+
+            },
+
+            "pipeline_metrics": {
+
+                "total_links_analysed": analysed_count
+
+            }
+
+        })
+
+
+    # STEP 2 — Deep scrape using Apify
+    try:
+
+        client = ApifyClient(APIFY_API_TOKEN)
+
+        run = client.actor(APIFY_ACTOR_ID).call(
+            run_input={"url": profile_url}
+        )
+
+        items = list(
+            client.dataset(run["defaultDatasetId"]).iterate_items()
+        )
+
+        if not items:
+            return jsonify({"error": "Profile not found"}), 404
+
+        raw_profile = items[0]
+
+    except Exception as e:
+
+        return jsonify({
+            "error": f"Apify scrape failed: {str(e)}"
+        }), 500
+
+
+    # STEP 3 — AI Biometric Screening
+    try:
+
+        ai_result_str = perform_biometric_screening(raw_profile)
+
+        ai_data = json.loads(ai_result_str)
+
+    except Exception as e:
+
+        return jsonify({
+            "error": "AI parsing failed",
+            "reason": str(e)
+        }), 500
+
+
+    # STEP 4 — Store analysis in DB
+    try:
+
+        new_profile = AnalyzedProfile(
+
+            profile_url=profile_url,
+
+            name=ai_data.get("name"),
+
+            headline=raw_profile.get("headline", ""),
+
+            skills=json.dumps(ai_data.get("skills", [])),
+            experience=json.dumps(ai_data.get("experience", [])),
+            education=json.dumps(ai_data.get("education", [])),
+
+            biometric_score=ai_data.get("biometric_score", 0),
+
+            raw_json=json.dumps(ai_data)
+
+        )
+
+        db.session.add(new_profile)
+        db.session.commit()
+
+    except Exception as e:
+
+        return jsonify({
+            "error": "DB insert failed",
+            "reason": str(e)
+        }), 500
+
+
+    # STEP 5 — Pipeline metrics
+    try:
+        analysed_count = AnalyzedProfile.query.count()
+    except:
+        analysed_count = 0
+
+
+    # STEP 6 — Return response
+    return jsonify({
+
+        "status": "success",
+
+        "candidate_summary": {
+
+            "name": ai_data.get("name"),
+            "headline": raw_profile.get("headline"),
+
+            "biometric_score": ai_data.get("biometric_score"),
+
+            "skills": ai_data.get("skills", []),
+
+            "experience": ai_data.get("experience", []),
+
+            "education": ai_data.get("education", [])
+
+        },
+
+        "recruiter_notes": {
+
+            "missing_fields": ai_data.get("missing_fields", []),
+
+            "ai_feedback": ai_data.get("feedback")
+
+        },
+
+        "pipeline_metrics": {
+
+            "total_links_analysed": analysed_count
+
+        }
+
+    })
     
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

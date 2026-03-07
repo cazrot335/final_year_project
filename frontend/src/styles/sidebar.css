@@ -1,0 +1,41 @@
+.sidebar{
+  width:240px !important;
+  min-width:240px !important;
+  max-width:240px !important;
+  height:100vh;
+  background:#FFFFFF !important;
+  border-right:1px solid #E5E7EB;
+}
+
+.logo{
+  font-size:18px;
+  font-weight:700;
+  padding:22px;
+  color:#2D3748;
+}
+
+.menu{
+  display:flex;
+  flex-direction:column;
+}
+
+.menu-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:14px 22px;
+  color:#2D3748;
+  text-decoration:none;
+  font-size:15px;
+}
+
+.menu-item:hover{
+  background:#F1F2FF;
+  color:#5E5ADB;
+}
+
+.menu-item.active{
+  background:#F1F2FF;
+  color:#5E5ADB;
+  font-weight:600;
+}

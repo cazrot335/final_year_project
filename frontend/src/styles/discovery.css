@@ -1,0 +1,118 @@
+/* Container */
+
+.discovery-container {
+  padding: 28px;
+  width: 100%;
+}
+
+
+/* Search Layer */
+
+.search-layer {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+
+.search-layer input {
+  flex: 1;
+  min-width: 180px;
+}
+
+.search-layer button {
+  background: #5E5ADB;
+  border: none;
+}
+
+.filter-layer{
+  display:flex;
+  gap:12px;
+  margin-bottom:20px;
+  flex-wrap:wrap;
+}
+
+
+/* Loader */
+
+.loader {
+  text-align: center;
+  padding: 40px;
+}
+
+.loader p {
+  margin-top: 12px;
+  color: #666;
+  font-size: 14px;
+}
+
+
+/* Profile Cards */
+
+.profile-card {
+  border-radius: 10px;
+  transition: all 0.25s ease;
+  min-height: 170px;
+}
+
+.profile-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+.profile-grid {
+
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+
+}
+
+
+/* Candidate Name */
+
+.profile-card h3 {
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+
+
+/* Designation */
+
+.designation {
+  font-weight: 600;
+  color: #5E5ADB;
+  margin-bottom: 8px;
+}
+
+
+/* Snippet */
+
+.snippet {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+
+/* Profile Link */
+
+.profile-card a {
+  font-weight: 500;
+  color: #5E5ADB;
+  text-decoration: none;
+}
+
+.profile-card a:hover {
+  text-decoration: underline;
+}
+
+
+/* Pagination */
+
+.pagination {
+  margin-top: 32px;
+  display: flex;
+  justify-content: center;
+}

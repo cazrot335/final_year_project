@@ -7,3 +7,5 @@ data.json
 /linkedIn_profiles/
 /.venv/
 /__pycache__/
+/instance
+.recruiter.db

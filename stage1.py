@@ -16,10 +16,10 @@ def perform_biometric_screening(profile_data):
         "Extract the following fields into a clean JSON structure: "
         "1. name, address (location), profile_id. "
         "2. education (list), experience (list), skills (list). "
-        "3. biometrics: {email: string, phone: string}. "
-        "4. biometric_score: (0-100). "
-        "5. missing_fields: A static list of required fields that are empty (e.g. ['email', 'phone']). "
-        "6. feedback: A brief professional summary. "
+        
+        "3. biometric_score: (0-100). "
+        "4. missing_fields: A static list of required fields that are empty (e.g. ['email', 'phone']). "
+        "5. feedback: A brief professional summary. "
         "IMPORTANT: Return ONLY the raw JSON object. NO markdown, NO backticks, NO explanations."
     )
 

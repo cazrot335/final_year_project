@@ -20,3 +20,7 @@ flask-cors
 # Utilities
 python-dotenv
 requests
+
+
+# database
+flask-sqlalchemy
