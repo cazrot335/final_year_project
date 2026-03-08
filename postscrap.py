@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from models import AnalyzedProfile, db, Profile, ScrapeLog, GlobalStats
+from routes.pipeline_routes import pipeline_bp
+from routes.profile_routes import profile_bp
 
 # Selenium + webdriver-manager
 from selenium import webdriver
@@ -50,6 +52,10 @@ db.init_app(app)
 
 with app.app_context():
     db.create_all()
+
+
+app.register_blueprint(pipeline_bp, url_prefix="/api/pipeline")  
+app.register_blueprint(profile_bp, url_prefix="/api/profiles")  
 
 # commented
 # app.register_blueprint(resume_bp)

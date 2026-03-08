@@ -139,19 +139,7 @@ export default function ProfileCard({ profile }) {
           </p>
 
 
-          {/* SCORE */}
-
-          <div className="score-row">
-
-            <span>Biometric Score</span>
-
-            <span className="score-value">
-
-              {analysis?.candidate_summary?.biometric_score}
-
-            </span>
-
-          </div>
+      
 
 
           <div className="progress-bar">

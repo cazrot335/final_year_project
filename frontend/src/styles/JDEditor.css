@@ -1,0 +1,14 @@
+.jd-editor-wrapper{
+
+  margin-top:10px;
+  background:white;
+  border-radius:8px;
+  overflow:hidden;
+
+}
+
+.jd-editor-wrapper .ql-container{
+
+  height:220px;
+
+}
