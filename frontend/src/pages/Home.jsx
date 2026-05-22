@@ -193,11 +193,11 @@ export default function Home() {
       {/* FOOTER */}
       <footer className="footer">
 
-        <p>© 2026 Group16 (Akatsuki)</p>
+        
 
-        <p>Developers: Nikhilesh • Parth • Neha</p>
+        
 
-        <p>GitHub</p>
+        <a href="">GitHub</a>
 
       </footer>
 
