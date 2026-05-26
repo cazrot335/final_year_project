@@ -24,3 +24,9 @@ requests
 
 # database
 flask-sqlalchemy
+
+
+#tts and stt
+fish-audio-sdk
+sounddevice
+scipy

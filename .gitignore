@@ -9,3 +9,5 @@ data.json
 /__pycache__/
 /instance
 .recruiter.db
+/interview_audio
+/resumes
