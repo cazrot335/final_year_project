@@ -65,7 +65,6 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
 
-    # Create interview_results table if it doesn't exist yet
     from sqlalchemy import text
     try:
         db.session.execute(text("""
@@ -85,6 +84,18 @@ with app.app_context():
     except Exception:
         pass
 
+    # Add synced_at column to profiles if missing (safe no-op if already exists)
+    try:
+        db.session.execute(text("ALTER TABLE profiles ADD COLUMN synced_at DATETIME"))
+        db.session.commit()
+    except Exception:
+        pass
+
+
+# ── Dork cache (in-memory, 24h TTL per keyword+location combo) ───────────────
+_dork_cache: dict = {}
+_DORK_CACHE_TTL = 86400  # seconds
+
 
 app.register_blueprint(pipeline_bp, url_prefix="/api/pipeline")
 app.register_blueprint(profile_bp,  url_prefix="/api/profiles")
@@ -95,6 +106,11 @@ app.register_blueprint(profile_bp,  url_prefix="/api/profiles")
 # ────────────────────────────────────────────────────────────────────────────
 
 def scrape_google_profiles(keyword, location, pages=3, with_email=True):
+    cache_key = f"{keyword.lower()}|{location.lower()}"
+    cached = _dork_cache.get(cache_key)
+    if cached and (time.time() - cached["ts"]) < _DORK_CACHE_TTL:
+        return cached["results"]
+
     query = f"site:linkedin.com/in {keyword} {location}"
     if with_email:
         query += " gmail.com"
@@ -189,6 +205,7 @@ def scrape_google_profiles(keyword, location, pages=3, with_email=True):
     finally:
         driver.quit()
 
+    _dork_cache[cache_key] = {"ts": time.time(), "results": results}
     return results
 
 
@@ -265,7 +282,7 @@ def api_scrape_linkedin():
     raw_results  = scrape_google_profiles(keyword, location, pages=pages)
     total_count  = len(raw_results)
     unique_count = 0
-
+    
     for p in raw_results:
         url    = p.get('profile_url')
         exists = Profile.query.filter_by(profile_url=url).first()
@@ -381,7 +398,108 @@ def get_profiles():
         "status":         "success",
         "total_profiles": total,
         "page":           page,
-        "results": [{"id": p.id, "name": p.name, "designation": p.designation, "snippet": p.snippet, "profile_url": p.profile_url} for p in profiles]
+        "results": [{
+            "id":          p.id,
+            "name":        p.name,
+            "designation": p.designation,
+            "snippet":     p.snippet,
+            "profile_url": p.profile_url,
+            "synced_at":   p.synced_at.isoformat() if p.synced_at else None,
+        } for p in profiles]
+    })
+
+
+@app.route('/api/profiles/<int:profile_id>/data', methods=['GET'])
+def get_profile_data(profile_id):
+    profile = Profile.query.get(profile_id)
+    if not profile:
+        return jsonify({"error": "Profile not found"}), 404
+
+    ap = AnalyzedProfile.query.filter_by(profile_url=profile.profile_url).first()
+    if not ap:
+        return jsonify({
+            "synced":      False,
+            "id":          profile.id,
+            "name":        profile.name,
+            "designation": profile.designation,
+            "snippet":     profile.snippet,
+            "profile_url": profile.profile_url,
+            "synced_at":   None,
+        })
+
+    raw = json.loads(ap.raw_json or "{}")
+    return jsonify({
+        "synced":      True,
+        "id":          profile.id,
+        "name":        ap.name or profile.name,
+        "headline":    ap.headline,
+        "profile_url": profile.profile_url,
+        "synced_at":   profile.synced_at.isoformat() if profile.synced_at else None,
+        "biometric_score": ap.biometric_score,
+        "skills":      json.loads(ap.skills or "[]"),
+        "experience":  json.loads(ap.experience or "[]"),
+        "education":   json.loads(ap.education or "[]"),
+        "ai_feedback": raw.get("feedback", ""),
+        "missing_fields": raw.get("missing_fields", []),
+    })
+
+
+@app.route('/api/profiles/<int:profile_id>/sync', methods=['POST'])
+def sync_profile(profile_id):
+    profile = Profile.query.get(profile_id)
+    if not profile:
+        return jsonify({"error": "Profile not found"}), 404
+
+    if not APIFY_API_TOKEN:
+        return jsonify({"error": "APIFY_API_TOKEN not configured"}), 500
+
+    try:
+        client      = ApifyClient(APIFY_API_TOKEN)
+        run         = client.actor(APIFY_ACTOR_ID).call(run_input={"url": profile.profile_url})
+        items       = list(client.dataset(run["defaultDatasetId"]).iterate_items())
+        if not items:
+            return jsonify({"error": "Apify returned no data"}), 404
+        raw_profile = items[0]
+    except Exception as e:
+        return jsonify({"error": f"Apify failed: {str(e)}"}), 500
+
+    try:
+        ai_result_str = perform_biometric_screening(raw_profile)
+        ai_data       = json.loads(ai_result_str)
+    except Exception as e:
+        return jsonify({"error": "AI parsing failed", "reason": str(e)}), 500
+
+    existing = AnalyzedProfile.query.filter_by(profile_url=profile.profile_url).first()
+    if existing:
+        existing.name            = ai_data.get("name", existing.name)
+        existing.headline        = raw_profile.get("headline", existing.headline)
+        existing.skills          = json.dumps(ai_data.get("skills", []))
+        existing.experience      = json.dumps(ai_data.get("experience", []))
+        existing.education       = json.dumps(ai_data.get("education", []))
+        existing.biometric_score = ai_data.get("biometric_score", 0)
+        existing.raw_json        = json.dumps(ai_data)
+        existing.created_at      = datetime.utcnow()
+    else:
+        db.session.add(AnalyzedProfile(
+            profile_url     = profile.profile_url,
+            name            = ai_data.get("name"),
+            headline        = raw_profile.get("headline", ""),
+            skills          = json.dumps(ai_data.get("skills", [])),
+            experience      = json.dumps(ai_data.get("experience", [])),
+            education       = json.dumps(ai_data.get("education", [])),
+            biometric_score = ai_data.get("biometric_score", 0),
+            raw_json        = json.dumps(ai_data),
+        ))
+
+    profile.is_deep_scraped = True
+    profile.synced_at       = datetime.utcnow()
+    db.session.commit()
+
+    return jsonify({
+        "status":    "synced",
+        "synced_at": profile.synced_at.isoformat(),
+        "name":      ai_data.get("name"),
+        "headline":  raw_profile.get("headline", ""),
     })
 
 

@@ -1,14 +1,32 @@
 .gap-page{
 
   display:flex;
-  gap:40px;
+  flex-wrap:wrap;
+  gap:32px;
   padding:30px;
+  align-items:flex-start;
 
 }
 
 .gap-left{
 
-  width:40%;
+  flex:0 0 38%;
+  min-width:280px;
+  position:sticky;
+  top:24px;
+
+}
+
+.gap-result-panel{
+
+  flex:1 1 100%;
+  width:100%;
+  background:#fff;
+  border-radius:14px;
+  border:1px solid #e8e8f0;
+  box-shadow:0 2px 12px rgba(94,90,219,0.07);
+  padding:28px 32px;
+  box-sizing:border-box;
 
 }
 
@@ -26,7 +44,10 @@
 
 .gap-right{
 
-  width:60%;
+  flex:1 1 0;
+  min-width:260px;
+  max-height:calc(100vh - 80px);
+  overflow-y:auto;
 
 }
 

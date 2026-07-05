@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 // import ReactQuill from "react-quill"
 
 // import "react-quill/dist/quill.snow.css"
@@ -17,6 +17,14 @@ export default function GapAnalysis(){
   const [jd,setJd] = useState("")
   const [result,setResult] = useState(null)
   const [loading,setLoading] = useState(false)
+  const resultRef = useRef(null)
+
+  // scroll result into view whenever it appears
+  useEffect(()=>{
+    if(result && resultRef.current){
+      resultRef.current.scrollIntoView({ behavior:"smooth", block:"start" })
+    }
+  },[result])
 
   useEffect(()=>{
 
@@ -88,7 +96,7 @@ export default function GapAnalysis(){
       </div>
 
 
-      {/* RIGHT PANEL */}
+      {/* RIGHT PANEL — candidate selection only */}
 
       <div className="gap-right">
 
@@ -109,14 +117,14 @@ export default function GapAnalysis(){
 
         </div>
 
-
-        {result && (
-
-          <GapResult result={result}/>
-
-        )}
-
       </div>
+
+      {/* RESULT PANEL — full width below both panels */}
+      {result && (
+        <div className="gap-result-panel" ref={resultRef}>
+          <GapResult result={result}/>
+        </div>
+      )}
 
     </div>
 

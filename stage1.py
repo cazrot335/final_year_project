@@ -1,7 +1,7 @@
 import requests
 import json
 import os
-
+ 
 def perform_biometric_screening(profile_data):
     HF_TOKEN = os.getenv("HF_TOKEN")
     API_URL = "https://router.huggingface.co/v1/chat/completions"

@@ -11,6 +11,7 @@ class Profile(db.Model):
     designation = db.Column(db.String(200))
     snippet = db.Column(db.Text)
     is_deep_scraped = db.Column(db.Boolean, default=False)
+    synced_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class ScrapeLog(db.Model):
